@@ -1,10 +1,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
+
+	"snippetbox.msarvaro.com/internal/models"
 )
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +28,13 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := tmpl.ExecuteTemplate(w, "base", nil); err != nil {
+	snippets, err := app.snippets.Latest()
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	if err := tmpl.ExecuteTemplate(w, "base", snippets); err != nil {
 		app.serverError(w, r, err)
 	}
 }
@@ -36,7 +45,15 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 		app.notFound(w)
 		return
 	}
-	fmt.Fprintf(w, "Display specific snippet with id - %d", id)
+	snippet, err := app.snippets.Get(id)
+	if err != nil {
+		if errors.Is(err, models.ErrNoRecord) {
+			app.clientError(w, http.StatusNotFound)
+			return
+		}
+		app.serverError(w, r, err)
+	}
+	fmt.Fprintf(w, "%+v", snippet)
 }
 
 func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
@@ -45,5 +62,15 @@ func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
 		app.clientError(w, http.StatusMethodNotAllowed)
 		return
 	}
-	w.Write([]byte("Should be able to create new snippet"))
+
+	title := "0 snail"
+	content := "O snail\nClimb Mount Fuji,\nBut slowly, slowly!\n\n- Kobayashi Issa"
+	expires := 7
+
+	id, err := app.snippets.Insert(title, content, expires)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, fmt.Sprintf("/snippet/view?id=%d", id), http.StatusSeeOther)
 }
