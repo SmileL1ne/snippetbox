@@ -27,6 +27,10 @@ func (app *application) notFound(w http.ResponseWriter) {
 	app.clientError(w, http.StatusNotFound)
 }
 
+func (app *application) methodNotAllowed(w http.ResponseWriter) {
+	app.clientError(w, http.StatusMethodNotAllowed)
+}
+
 func (app *application) render(w http.ResponseWriter, r *http.Request, status int, page string, data templateData) {
 	tmpl, ok := app.templateCache[page]
 	if !ok {
