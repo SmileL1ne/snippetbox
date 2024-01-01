@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/julienschmidt/httprouter"
 	"snippetbox.msarvaro.com/internal/models"
@@ -49,16 +51,61 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 
 func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
 	data := app.newTemplateData(r)
+	data.Form = SnippetCreation{
+		Expires: 365,
+	}
 
 	app.render(w, r, http.StatusOK, "create.html", data)
 }
 
-func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
-	title := "O snail"
-	content := "O snail\nClimb Mount Fuji,\nBut slowly, slowly!\n\n– Kobayashi Issa"
-	expires := 7
+type SnippetCreation struct {
+	Title       string
+	Content     string
+	Expires     int
+	FieldErrors map[string]string
+}
 
-	id, err := app.snippets.Insert(title, content, expires)
+func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	expires, err := strconv.Atoi(r.PostForm.Get("expires"))
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	form := SnippetCreation{
+		Title:       r.PostForm.Get("title"),
+		Content:     r.PostForm.Get("content"),
+		Expires:     expires,
+		FieldErrors: map[string]string{},
+	}
+
+	if strings.TrimSpace(form.Title) == "" {
+		form.FieldErrors["title"] = "This field cannot be blank"
+	} else if utf8.RuneCountInString(form.Title) > 100 {
+		form.FieldErrors["title"] = "This field cannot be more than 100 characters long"
+	}
+
+	if strings.TrimSpace(form.Content) == "" {
+		form.FieldErrors["content"] = "This field cannot be blank"
+	}
+
+	if expires != 1 && expires != 7 && expires != 365 {
+		form.FieldErrors["expires"] = "This field must be equal to 1, 7 or 365"
+	}
+
+	if len(form.FieldErrors) > 0 {
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, r, http.StatusUnprocessableEntity, "create.html", data)
+		return
+	}
+
+	id, err := app.snippets.Insert(form.Title, form.Content, expires)
 	if err != nil {
 		app.serverError(w, r, err)
 		return
