@@ -64,6 +64,7 @@ func main() {
 	sessionManager.Store = mysqlstore.New(db)
 	sessionManager.Lifetime = 12 * time.Hour
 	sessionManager.IdleTimeout = 10 * time.Minute
+	sessionManager.Cookie.Secure = true
 
 	app := &application{
 		logger:         logger,
@@ -85,9 +86,16 @@ func main() {
 		os.Exit(0)
 	}()
 
-	// Starting the server
+	// Creating server
+	server := &http.Server{
+		Addr:     "127.0.0.1" + cfg.addr,
+		Handler:  app.routes(),
+		ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelError),
+	}
+
+	// Starting server
 	logger.Info("starting the server", slog.String("addr", cfg.addr))
-	err = http.ListenAndServe("127.0.0.1"+cfg.addr, app.routes())
+	err = server.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
 	logger.Error(err.Error())
 	os.Exit(1)
 }
