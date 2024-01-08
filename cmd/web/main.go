@@ -28,6 +28,7 @@ type config struct {
 type application struct {
 	logger         *slog.Logger
 	snippets       *models.SnippetModel
+	users          *models.UserModel
 	templateCache  map[string]*template.Template
 	cfg            config
 	formDecoder    *form.Decoder
@@ -70,6 +71,7 @@ func main() {
 	app := &application{
 		logger:         logger,
 		snippets:       &models.SnippetModel{DB: db},
+		users:          &models.UserModel{DB: db},
 		templateCache:  templateCache,
 		cfg:            *cfg,
 		formDecoder:    formDecoder,
