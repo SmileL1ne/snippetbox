@@ -92,6 +92,7 @@ func main() {
 	// Create non-default TLS config to allow only elliptic curves to use
 	tlsConfig := &tls.Config{
 		CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256},
+		MinVersion:       tls.VersionTLS13,
 	}
 
 	// Creating server
