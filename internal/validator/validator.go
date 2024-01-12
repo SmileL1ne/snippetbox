@@ -43,7 +43,7 @@ func NotBlank(value string) bool {
 }
 
 func MinChart(value string, n int) bool {
-	return utf8.RuneCountInString(value) <= n
+	return utf8.RuneCountInString(value) >= n
 }
 
 func MaxChars(value string, n int) bool {
